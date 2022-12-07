@@ -1,84 +1,89 @@
-import pygame
+import re
+import random
 
-pygame.init()
+# Get the answer.
+pool_file = open("hangman-sample-answer-pool.txt")
 
-#Game settings.
-monitor_display = (800,600)
+pool_answers = []
 
-game_display = pygame.display.set_mode(monitor_display)
+pool_answer_line = pool_file.readline()
 
-pygame.display.set_caption("Tank Domination")
+while pool_answer_line:
+  pool_answers.append(pool_answer_line)
 
-system_clock = pygame.time.Clock()
+  pool_answer_line = pool_file.readline()
 
-game_tank_svg = pygame.image.load("tank.svg")
+pool_file.close()
 
-game_tank_sprite = pygame.transform.scale(game_tank_svg, (75, 75))
+answer = random.choice(pool_answers)
 
-game_characteristics = {
-  "sky": {
-    "color": (135, 206, 235)
-  },
-  "grass":{
-    "color": (0, 255, 0),
-    "position": {
-      "y": 0.8 * monitor_display[1]
-    }
-  },
-  "player":{
-    "position":{
-      "x": 0.2 * monitor_display[0]
-    },
-    "hp": 1
-  },
-   "cpu":{
-    "position":{
-      "x": 0.8 * monitor_display[0] - game_tank_sprite.get_width()
-    },
-    "hp": 1
-  }
-}
+answer = answer.upper()
 
-#Game Logic.
-game_running_flag = True
+# Pre-game setup.
+answer_guessed = []
 
-while game_running_flag:
-  for event in pygame.event.get():
-    if event.type == pygame.QUIT:
-      game_running_flag = False
+for current_answer_character in answer:
+  if re.search("^[A-Z]$", current_answer_character):
+    answer_guessed.append(False)
+  else:
+    answer_guessed.append(True)
 
-  if not game_running_flag:
-    pygame.quit()
+# Game logic.
+num_of_incorrect_guesses = 5
 
-    break
+current_incorrect_guesses = 0
 
-  #Movement
-  key_pressed = pygame.key.get_pressed()
+letters_guessed = []
 
-  position_delta = 0
+# User gameplay logic.
+while current_incorrect_guesses < num_of_incorrect_guesses and False in answer_guessed:
+  # Display game summary.
+  print(f"Number of incorrect guesses: {num_of_incorrect_guesses - current_incorrect_guesses}")
 
-  if key_pressed[pygame.K_LEFT]:
-    position_delta = -1
-  elif key_pressed[pygame.K_RIGHT]:
-    position_delta = 1
+  print("Guessed letters: ", end="")
 
-  game_characteristics["player"]["position"]["x"] += position_delta
+  for current_letter_guessed in letters_guessed:
+    print(current_letter_guessed, end=" ")
     
-  game_display.fill(game_characteristics["sky"]["color"])
+  print()
 
-  #Create grass
-  pygame.draw.rect(game_display, game_characteristics["grass"]["color"], pygame.Rect(0, game_characteristics["grass"]["position"]["y"], monitor_display[0], monitor_display[1] - game_characteristics["grass"]["position"]["y"]))
+  # Display puzzle board.
+  for current_answer_index in range(len(answer)):
+    if answer_guessed[current_answer_index]:
+      print(answer[current_answer_index], end="")
+    else:
+      print("_", end="")
 
-  #Create player and computer
-  game_tank_sprite_player = game_tank_sprite
+  print()
 
-  game_display.blit(game_tank_sprite_player, (game_characteristics["player"]["position"]["x"], game_characteristics["grass"]["position"]["y"] - game_tank_sprite_player.get_height()))
+  # Let user guess a letter
+  letter = input(" Enter a letter: ")
 
-  game_tank_sprite_cpu = pygame.transform.flip(game_tank_sprite, True, False)
+  letter = letter.upper()
 
-  game_display.blit(game_tank_sprite_cpu, (game_characteristics["cpu"]["position"]["x"], game_characteristics["grass"]["position"]["y"] - game_tank_sprite_cpu.get_height()))
-  
-  #Running game mechanics.
-  pygame.display.update()
+  # Check if user entered a valid letter.
+  if re.search("^[A-Z]$", letter) and len(letter) == 1 and letter not in letters_guessed:
+    # Insert the letter gussed by the user (insertion sort).
+    current_letter_index = 0
 
-  system_clock.tick(30)
+    for current_letter_guessed in letters_guessed:
+      if letter < current_letter_guessed:
+        break
+
+      current_letter_index += 1
+
+    letters_guessed.insert(current_letter_index, letter)
+
+    # Check if letter is in the puzzle.
+    if letter in answer:
+      for current_answer_index in range(len(answer)):
+        if letter == answer[current_answer_index]:
+          answer_guessed[current_answer_index] = True
+    else:
+      current_incorrect_guesses += 1
+
+# Post-game summary.
+if current_incorrect_guesses < num_of_incorrect_guesses:
+  print("Congratulations, you won!")
+else:
+  print(f"Sorry you lost. The answer was {answer}")
